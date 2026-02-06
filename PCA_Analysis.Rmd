@@ -1,0 +1,144 @@
+---
+title: "PCA 2_19_25"
+author: "Madeline Ratoza"
+date: "2025-02-19"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+install.packages("factoextra")
+library(readxl)      
+library(ggplot2)      
+library(factoextra)   
+library(corrplot)    
+library(dplyr)  
+```
+
+```{r}
+RPSA <- read_excel("/Users/madelineratoza/Desktop/RPSA4.xls")
+```
+
+```{r}
+variable.names(RPSA)
+```
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(ggplot2)
+library(factoextra)
+library(corrplot)
+library(stats)  # For regression
+
+# Read the dataset
+RPSA <- read_excel("/Users/madelineratoza/Desktop/RPSA4.xls")
+
+# Select predictor variables
+pca_vars <- RPSA[, c("Below Poverty", "Time to NSC Score", 
+                      "Population to Provider Ratio", "Phyiscal Inactivity", 
+                      "Arthritis", "Obesity", "Stroke", 
+                      "Transportation Barriers", "Lack of Health Insurance")]
+
+# Check if pca_vars is a data frame
+print(class(pca_vars))  # Should return "data.frame"
+
+# Convert all columns to numeric (handles list issue)
+pca_vars <- as.data.frame(lapply(pca_vars, as.numeric))
+
+# Check for missing values
+print(colSums(is.na(pca_vars)))  # Show missing values per column
+
+# Remove or impute missing values
+pca_vars <- na.omit(pca_vars)  # Option 1: Remove rows with missing data
+# pca_vars[is.na(pca_vars)] <- apply(pca_vars, 2, mean, na.rm = TRUE)  # Option 2: Mean imputation
+
+# Standardize the data
+pca_vars_scaled <- scale(pca_vars)
+
+# Perform PCA
+pca_result <- prcomp(pca_vars_scaled, center = TRUE, scale. = TRUE)
+
+# View PCA summary
+summary(pca_result)
+
+# Scree plot to visualize variance explained by components
+fviz_eig(pca_result)
+
+# Extract principal component scores
+pca_scores <- as.data.frame(pca_result$x)
+
+# Add the outcome variable, ensuring correct row alignment
+pca_scores$RPSA4 <- RPSA$RPSA4[rownames(pca_scores)]  
+```
+```{r}
+# Load necessary libraries
+library(readxl)
+library(ggplot2)
+library(factoextra)
+
+# Read your dataset
+RPSA <- read_excel("/Users/madelineratoza/Desktop/RPSA4.xls")
+
+# Select predictor variables
+pca_vars <- RPSA[, c("Below Poverty", "Time to NSC Score", 
+                      "Population to Provider Ratio", "Phyiscal Inactivity", 
+                      "Arthritis", "Obesity", "Stroke", 
+                      "Transportation Barriers", "Lack of Health Insurance")]
+
+# Convert all columns to numeric (to avoid errors)
+pca_vars <- as.data.frame(lapply(pca_vars, as.numeric))
+
+# Remove missing values
+pca_vars <- na.omit(pca_vars)
+
+# Perform PCA (standardize data)
+pca_result <- prcomp(pca_vars, center = TRUE, scale. = TRUE)
+
+# Generate the biplot with arrows (variables)
+fviz_pca_var(pca_result, 
+             col.var = "red",      # Color for arrows
+             repel = TRUE,         # Avoid overlapping labels
+             alpha.var = 0.7,      # Transparency of arrows
+             labelsize = 5         # Increase text size
+)
+library(ggrepel)
+fviz_pca_var(pca_result, repel = TRUE)
+fviz_pca_var(pca_result) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+fviz_pca_var(pca_result, select.var = list(contrib = 10))
+fviz_pca_var(pca_result, 
+             col.var = "contrib", # Colors based on contribution
+             gradient.cols = c("blue", "red"),
+             repel = TRUE)  # Avoid overlapping labels
+variable_groups <- c("red", "red", "red",  # Access-related
+                     "blue", "blue", "blue",  # Health conditions
+                     "green", "green", "green")  # Socioeconomic
+
+fviz_pca_var(pca_result, col.var = variable_groups, repel = TRUE)
+```
+```{r}
+print(pca_result$rotation)  
+# Load required libraries
+library(ggplot2)
+library(reshape2)
+
+# Extract the first four principal component loadings
+loadings_table <- as.data.frame(pca_result$rotation[, 1:4])
+
+# Add row names as a new column (so variables are preserved)
+loadings_table$Variable <- rownames(loadings_table)
+
+# Reshape the data to long format for ggplot
+loadings_long <- melt(loadings_table, id.vars = "Variable", variable.name = "Principal Component", value.name = "Loading")
+
+# Plot the loadings for PC1 to PC4
+ggplot(loadings_long, aes(x = Variable, y = Loading, fill = `Principal Component`)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "PCA Loadings for PC1 to PC4", x = "Variables", y = "Loading Value")
+
+```
+
