@@ -1,0 +1,198 @@
+---
+title: "Chapter 5 analysis"
+author: "Madeline Ratoza"
+date: "01-02-2025"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+library(readxl) #import excel
+library(stringr) #string replace
+```
+#set directory
+#get directory
+```{r}
+setwd("/Users/madelineratoza/Desktop")
+getwd()
+```
+#import data
+```{r}
+RPSA<- read_excel ("/Users/madelineratoza/Desktop/RPSA1.xlsx")
+```
+#check variable names
+```{r}
+variable.names(RPSA)
+```
+#load packages
+```{r}
+install.packages("dplyr")
+install.packages("car")
+install.packages("ggplot2")
+library(ggplot2)   
+library(dplyr)     
+library(car)       
+library(ggpubr)    
+```
+#check normality
+```{r}
+sum(!is.na(RPSA$`RPSA One`))
+sum(!is.na(RPSA$`RPSA Two`))
+sum(!is.na(RPSA$`RPSA Three`))
+```
+
+
+```{r}
+library(nortest)
+ad.test(RPSA$`RPSA One`)
+ad.test(RPSA$`RPSA Two`)
+ad.test(RPSA$`RPSA Three`)
+
+# Generate QQ plots
+ggqqplot(RPSA$`RPSA One`, title = "QQ Plot for RPSA One")
+ggqqplot(RPSA$`RPSA Two`, title = "QQ Plot for RPSA Two")
+ggqqplot(RPSA$`RPSA Three`, title = "QQ Plot for RPSA Three")
+
+# Generate density plots
+ggplot(RPSA, aes(x=`RPSA One`)) + geom_density() + ggtitle("Density Plot for RPSA One")
+ggplot(RPSA, aes(x=`RPSA Two`)) + geom_density() + ggtitle("Density Plot for RPSA Two")
+ggplot(RPSA, aes(x=`RPSA Three`)) + geom_density() + ggtitle("Density Plot for RPSA Three")
+```
+```{r}
+# Create boxplots
+boxplot(RPSA$`RPSA One`, main="Boxplot for RPSA One", horizontal = TRUE)
+boxplot(RPSA$`RPSA Two`, main="Boxplot for RPSA Two", horizontal = TRUE)
+boxplot(RPSA$`RPSA Three`, main="Boxplot for RPSA Three", horizontal = TRUE)
+
+# Identify outliers
+outliers_rpsa1 <- boxplot.stats(RPSA$`RPSA One`)$out
+outliers_rpsa2 <- boxplot.stats(RPSA$`RPSA Two`)$out
+outliers_rpsa3 <- boxplot.stats(RPSA$`RPSA Three`)$out
+
+# Print outliers
+print("Outliers in RPSA One:")
+print(outliers_rpsa1)
+
+print("Outliers in RPSA Two:")
+print(outliers_rpsa2)
+
+print("Outliers in RPSA Three:")
+print(outliers_rpsa3)
+```
+
+#conduct Friedman Test
+```{r}
+friedman_result <- friedman.test(as.matrix(RPSA[, c("RPSA One", "RPSA Two", "RPSA Three")]))
+print(friedman_result)
+```
+```{r}
+library(corrplot)
+```
+#Calculate correlations and visualize correlation matrix 
+```{r}
+numeric_data <- RPSA[, sapply(RPSA, is.numeric)]
+cor_matrix <- cor(numeric_data, use = "pairwise.complete.obs")
+print(cor_matrix)
+```
+```{r}
+corrplot(cor_matrix, method = "color", tl.cex = 0.8)
+```
+
+#subset data by RPSA trial (RPSA1) 
+```{r}
+selected_vars1 <- RPSA[, c("Population to Provider", "Travel Time", "Below Poverty", "Freqeunt Physical Distress", "Physical Inactivity", "Mobility Disability",  "Self-care Disability", "Independent Living Disability", "RPSA One")]
+cor_matrix1 <- cor(selected_vars1, use = "pairwise.complete.obs")
+print(cor_matrix1)
+```
+```{r}
+corrplot(cor_matrix1, method = "color", tl.cex = 0.8, type = "lower", addCoef.col = "black", number.cex = 0.7, diag = FALSE)
+```
+```{r}
+format_no_leading_zero <- function(x) {
+  formatted <- formatC(x, format = "f", digits = 2)
+  sub("^0\\.", ".", formatted)  # Remove leading zero from positive numbers
+}
+corrplot(cor_matrix1, method = "color", 
+         tl.cex = 0.8, type = "lower", 
+         addCoef.col = NA, number.cex = 0.7,  # Prevent automatic coefficient labels
+         diag = FALSE)
+```
+
+#subset data by RPSA trial (RPSA2) 
+```{r}
+selected_vars2 <- RPSA[, c("Population to Provider", "Travel Time", "Below Poverty", "Freqeunt Physical Distress", "Physical Inactivity", "Mobility Disability",  "Self-care Disability", "Independent Living Disability", "Arthritis", "Stroke", "Obesity", "RPSA Two")]
+cor_matrix2 <- cor(selected_vars2, use = "pairwise.complete.obs")
+print(cor_matrix2)
+```
+```{r}
+library(corrplot)
+
+# Function to remove leading zeros properly
+remove_leading_zero <- function(x) {
+  ifelse(abs(x) < 1, sub("^0+", "", sprintf("%.2f", x)), sprintf("%.2f", x))
+}
+
+# Get matrix dimensions
+n <- ncol(cor_matrix2)
+
+# Create a matrix with formatted numbers for lower triangle
+formatted_labels <- matrix(NA, nrow = n, ncol = n)  # Empty matrix for labels
+for (i in 1:n) {
+  for (j in 1:i) {  # Lower triangle only
+    formatted_labels[i, j] <- remove_leading_zero(cor_matrix2[i, j])
+  }
+}
+
+# Adjust margins to prevent text overlap
+par(mar = c(6, 6, 4, 2))
+
+# Generate the correlation plot **without numbers**
+corrplot(
+  cor_matrix2,  
+  method = "color", 
+  type = "lower", 
+  tl.cex = 0.7, 
+  addCoef.col = NA,  # Removes default numbers
+  number.cex = 0.6, 
+  diag = FALSE
+)
+
+# **Extract X & Y positions for lower triangle labels**
+coords <- which(lower.tri(cor_matrix2, diag = FALSE), arr.ind = TRUE)
+
+# Manually overlay **only** lower triangle numbers, correctly positioned
+text(
+  x = coords[, 2],  # Column indices
+  y = n - coords[, 1] + 1,  # Flip Y-coordinates for alignment
+  labels = formatted_labels[lower.tri(formatted_labels, diag = FALSE)], 
+  cex = 0.7, 
+  col = "black"
+)
+
+# Add axis labels with extra spacing
+mtext("Correlation Coefficients", side = 1, line = 5, cex = 1.2)
+mtext("Variables", side = 2, line = 5, cex = 1.2)
+
+# Reset margins after plotting
+par(mar = c(5, 4, 4, 2) + 0.1)
+```
+
+
+```{r}
+corrplot(cor_matrix2, method = "color", tl.cex = 0.7, type = "lower", addCoef.col = "black", number.cex = 0.6, diag = FALSE)
+```
+
+#subset data by RPSA trial (RPSA3) 
+```{r}
+selected_vars3 <- RPSA[, c("Population to Provider", "Travel Time", "Below Poverty", "Freqeunt Physical Distress", "Physical Inactivity", "Mobility Disability",  "Self-care Disability", "Independent Living Disability", "Arthritis", "Stroke", "Obesity", "Transportation Barriers", "Lack of Insurance", "RPSA Three")]
+cor_matrix3 <- cor(selected_vars3, use = "pairwise.complete.obs")
+print(cor_matrix3)
+```
+```{r}
+corrplot(cor_matrix3, method = "color", tl.cex = .6, type = "lower", addCoef.col = "black", number.cex = 0.5, diag = FALSE)
+```
+
+
+
+
+
