@@ -1,0 +1,201 @@
+---
+title: "Chapter 5 Model 4 analysis"
+author: "Madeline Ratoza"
+date: "2025-02-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(readxl) #import excel
+library(stringr) #string replace
+```
+#set directory
+#get directory
+```{r}
+setwd("/Users/madelineratoza/Desktop")
+getwd()
+```
+#import data
+```{r}
+RPSA4<- read_excel ("/Users/madelineratoza/Desktop/RPSA4.xls")
+```
+#check variable names
+```{r}
+variable.names(RPSA4)
+```
+
+```{r}
+library(ggplot2)   
+library(dplyr)     
+library(car)       
+library(ggpubr)    
+```
+#check normality
+```{r}
+sum(!is.na(RPSA4$`RPSA1`))
+sum(!is.na(RPSA4$`RPSA2`))
+sum(!is.na(RPSA4$`RPSA3`))
+sum(!is.na(RPSA4$`RPSA4`))
+```
+```{r}
+library(nortest)
+ad.test(RPSA4$`RPSA1`)
+ad.test(RPSA4$`RPSA2`)
+ad.test(RPSA4$`RPSA3`)
+ad.test(RPSA4$`RPSA4`)
+
+# Generate QQ plots
+ggqqplot(RPSA4$`RPSA1`, title = "QQ Plot for RPSA One")
+ggqqplot(RPSA4$`RPSA2`, title = "QQ Plot for RPSA Two")
+ggqqplot(RPSA4$`RPSA3`, title = "QQ Plot for RPSA Three")
+ggqqplot(RPSA4$`RPSA4`, title = "QQ Plot for RPSA Four")
+
+# Generate density plots
+ggplot(RPSA4, aes(x=`RPSA1`)) + geom_density() + ggtitle("Density Plot for RPSA One")
+ggplot(RPSA4, aes(x=`RPSA2`)) + geom_density() + ggtitle("Density Plot for RPSA Two")
+ggplot(RPSA4, aes(x=`RPSA3`)) + geom_density() + ggtitle("Density Plot for RPSA Three")
+ggplot(RPSA4, aes(x=`RPSA4`)) + geom_density() + ggtitle("Density Plot for RPSA Four")
+```
+```{r}
+# Create boxplots
+boxplot(RPSA4$`RPSA1`, main="Boxplot for RPSA One", horizontal = TRUE)
+boxplot(RPSA4$`RPSA2`, main="Boxplot for RPSA Two", horizontal = TRUE)
+boxplot(RPSA4$`RPSA3`, main="Boxplot for RPSA Three", horizontal = TRUE)
+boxplot(RPSA4$`RPSA4`, main="Boxplot for RPSA Four", horizontal = TRUE)
+
+# Identify outliers
+outliers_rpsa1 <- boxplot.stats(RPSA4$`RPSA One`)$out
+outliers_rpsa2 <- boxplot.stats(RPSA4$`RPSA Two`)$out
+outliers_rpsa3 <- boxplot.stats(RPSA4$`RPSA Three`)$out
+outliers_rpsa4 <- boxplot.stats(RPSA4$`RPSA Four`)$out
+
+# Print outliers
+print("Outliers in RPSA One:")
+print(outliers_rpsa1)
+
+print("Outliers in RPSA Two:")
+print(outliers_rpsa2)
+
+print("Outliers in RPSA Three:")
+print(outliers_rpsa3)
+
+print("Outliers in RPSA Four:")
+print(outliers_rpsa4)
+```
+```{r}
+friedman_result <- friedman.test(as.matrix(RPSA4[, c("RPSA1", "RPSA2", "RPSA3", "RPSA4")]))
+print(friedman_result)
+```
+```{r}
+pairwise.wilcox.test(as.vector(as.matrix(RPSA4[, c("RPSA1", "RPSA2", "RPSA3", "RPSA4")])), 
+                      rep(1:4, each=nrow(RPSA4)), 
+                      paired = TRUE, 
+                      p.adjust.method = "bonferroni")
+```
+```{r}
+summary(RPSA4[, c("RPSA1", "RPSA2", "RPSA3", "RPSA4")])
+boxplot(RPSA4[, c("RPSA1", "RPSA2", "RPSA3", "RPSA4")], main="Boxplot of Models", ylab="Values")
+```
+
+
+```{r}
+library(corrplot)
+```
+
+#Calculate correlations and visualize correlation matrix 
+```{r}
+numeric_data <- RPSA4[, sapply(RPSA4, is.numeric)]
+cor_matrix <- cor(numeric_data, use = "pairwise.complete.obs")
+print(cor_matrix)
+```
+
+```{r}
+corrplot(cor_matrix, method = "color", tl.cex = 0.8)
+```
+
+#subset data by RPSA trial (RPSA1) 
+```{r}
+selected_vars1 <- RPSA4[, c("Population to Provider Ratio", "Time to NSC", "Below Poverty", "Physical Distress", "Physical Inactivity", "Mobility Disability",  "Self Care Disability", "Independent Living", "RPSA1")]
+cor_matrix1 <- cor(selected_vars1, use = "pairwise.complete.obs")
+print(cor_matrix1)
+```
+```{r}
+corrplot(cor_matrix1, method = "color", tl.cex = 0.8, type = "lower", addCoef.col = "black", number.cex = 0.7, diag = FALSE)
+```
+#subset data by RPSA trial (RPSA2) 
+```{r}
+selected_vars2 <- RPSA4[, c("Population to Provider Ratio", "Time to NSC", "Below Poverty", "Physical Distress", "Physical Inactivity", "Mobility Disability",  "Self Care Disability", "Independent Living", "Arthritis", "Stroke", "Obesity","RPSA2")]
+cor_matrix2 <- cor(selected_vars2, use = "pairwise.complete.obs")
+print(cor_matrix2)
+```
+
+```{r}
+corrplot(cor_matrix2, method = "color", tl.cex = 0.7, type = "lower", addCoef.col = "black", number.cex = 0.6, diag = FALSE)
+```
+#subset data by RPSA trial (RPSA3) 
+```{r}
+selected_vars3 <- RPSA4[, c("Population to Provider Ratio", "Time to NSC", "Below Poverty", "Physical Distress", "Physical Inactivity", "Mobility Disability",  "Self Care Disability", "Independent Living", "Arthritis", "Stroke", "Obesity","Transportation Barriers", "Lack of Health Insurance", "RPSA3")]
+cor_matrix3 <- cor(selected_vars3, use = "pairwise.complete.obs")
+print(cor_matrix3)
+```
+
+```{r}
+corrplot(cor_matrix3, method = "color", tl.cex = .6, type = "lower", addCoef.col = "black", number.cex = 0.5, diag = FALSE)
+```
+```{r}
+selected_vars4 <- RPSA4[, c("Population to Provider Ratio", "Time to NSC", "Below Poverty", "Physical Inactivity", "Arthritis", "Stroke", "Obesity","Transportation Barriers", "Lack of Health Insurance", "RPSA4")]
+cor_matrix4 <- cor(selected_vars4, use = "pairwise.complete.obs")
+print(cor_matrix4)
+```
+
+```{r}
+corrplot(cor_matrix4, method = "color", tl.cex = .6, type = "lower", addCoef.col = "black", number.cex = 0.5, diag = FALSE)
+```
+```{r}
+corrplot(
+  cor_matrix4,
+  method = "color",
+  tl.cex = 0.6,
+  type = "lower",
+  addCoef.col = "black",
+  number.cex = 0.5,
+  diag = FALSE,
+  mar = c(4, 0, 0, 0)
+)
+
+mtext(
+  "Note. NSC is Nearest Source of Care.",
+  side = 1,
+  line = 2,
+  adj = 0,
+  cex = 0.7
+)
+```
+
+```{r}
+png(
+  "Correlation_Plot.png",
+  width = 10,
+  height = 8,
+  units = "in",
+  res = 300,
+  pointsize = 14
+)
+
+corrplot(
+  cor_matrix4,
+  method = "color",
+  type = "lower",
+  tl.col = "black",
+  tl.cex = 1,
+  addCoef.col = "black",
+  number.cex = 0.9,
+  cl.cex = 0.9,
+  diag = FALSE
+)
+
+dev.off()
+```
+
