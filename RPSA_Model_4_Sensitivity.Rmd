@@ -1,0 +1,126 @@
+---
+title: "RPSA Model Four Scoring-Scale Sensitivity Analysis"
+output:
+  html_document: default
+  pdf_document: default
+params:
+  data_file: RPSA4.xls
+---
+
+## Objective
+
+Assess whether the 26-point maximum for Model Four affects comparisons with
+Models One through Three, which each have a 25-point maximum. The sensitivity
+analysis multiplies Model Four scores by 25/26 without rounding. This preserves
+component weights relative to one another and preserves the ordering of tracts
+within Model Four.
+
+## Data
+
+To knit, install `readxl`, `knitr`, and `rmarkdown` if needed. Place
+`RPSA4.xls` next to this file or set the `data_file` parameter to the workbook
+path, relative to this file or absolute.
+
+```{r data}
+model_columns <- paste0("RPSA", 1:4)
+workbook <- readxl::read_excel("/Users/madelineratoza/Desktop/RPSA4.xls")
+stopifnot(all(model_columns %in% names(workbook)))
+scores <- workbook[model_columns]
+stopifnot(all(vapply(scores, is.numeric, logical(1))))
+
+original <- as.matrix(scores[complete.cases(scores), ])
+stopifnot(nrow(original) >= 2L, all(is.finite(original)),
+          all(original == trunc(original)))
+data.frame(
+  Total = nrow(scores),
+  Included = nrow(original),
+  Excluded = nrow(scores) - nrow(original)
+) |> knitr::kable()
+```
+
+## Statistical comparisons
+
+Both analyses use the same complete tracts. Friedman tests compare the four
+scores within tracts. Two-sided paired Wilcoxon signed-rank tests use a
+normal approximation with continuity correction and Bonferroni adjustment across
+all six pairs for each scale. Positive differences indicate that the second
+model in a pair scores higher on average.
+
+```{r tests}
+# Work in units of 1/26 point to preserve exact ties in the rank tests.
+original_units <- 26 * original
+rescaled_units <- original_units
+rescaled_units[, "RPSA4"] <- 25 * original[, "RPSA4"]
+
+analyze_scores <- function(score_units) {
+  friedman <- stats::friedman.test(score_units)
+  pairs <- utils::combn(colnames(score_units), 2, simplify = FALSE)
+  pairwise <- do.call(rbind, lapply(pairs, function(pair) {
+    difference <- score_units[, pair[2]] - score_units[, pair[1]]
+    test <- stats::wilcox.test(difference, exact = FALSE, correct = TRUE)
+
+    data.frame(
+      Comparison = paste(pair[2], "minus", pair[1]),
+      Mean_difference = mean(difference) / 26,
+      Median_difference = median(difference) / 26,
+      P = test$p.value
+    )
+  }))
+  pairwise$Adjusted_p <- stats::p.adjust(pairwise$P, method = "bonferroni")
+
+  list(
+    omnibus = data.frame(
+      Chi_squared = unname(friedman$statistic),
+      DF = unname(friedman$parameter),
+      P = friedman$p.value
+    ),
+    pairwise = pairwise
+  )
+}
+
+original_results <- analyze_scores(original_units)
+rescaled_results <- analyze_scores(rescaled_units)
+```
+
+### Friedman tests
+
+```{r friedman-table}
+format_p <- function(p) format.pval(p, digits = 3, eps = 0.001)
+
+omnibus <- rbind(
+  cbind(Scale = "Original", original_results$omnibus),
+  cbind(Scale = "Common 25-point maximum", rescaled_results$omnibus)
+)
+omnibus$P <- format_p(omnibus$P)
+knitr::kable(omnibus, digits = 3,
+             col.names = c("Scale", "Chi-squared", "df", "p"))
+```
+
+### Paired Wilcoxon tests
+
+```{r pairwise-table}
+pairwise <- rbind(
+  cbind(Scale = "Original", original_results$pairwise),
+  cbind(Scale = "Common 25-point maximum", rescaled_results$pairwise)
+)
+pairwise$P <- format_p(pairwise$P)
+pairwise$Adjusted_p <- format_p(pairwise$Adjusted_p)
+knitr::kable(
+  pairwise, digits = 3,
+  col.names = c("Scale", "Comparison", "Mean difference (points)",
+                "Median difference (points)", "p", "Bonferroni-adjusted p")
+)
+```
+
+## Interpretation
+
+Interpret the paired tests alongside the magnitude and direction of the score
+differences. The sensitivity analysis addresses the overall scoring scale.
+Assessing the influence of individual indicators or weights would require
+separate model specifications.
+
+## Session information
+
+```{r session-info}
+sessionInfo()
+```
